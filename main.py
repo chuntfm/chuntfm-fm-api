@@ -5,7 +5,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timezone
 from dateutil import parser
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from pydantic import BaseModel, Field
 import json
 import threading
@@ -63,8 +63,7 @@ class NowPlayingItem(BaseModel):
     end_time: Optional[str] = None
 
 class ChannelStatus(BaseModel):
-    state: str  # up, down, degraded
-    mode: str   # live, restream, jukebox, offline
+    state: str  # online, offline
     is_playing: bool
 
 
@@ -100,7 +99,7 @@ async def list_channels():
             for ch in FM_CHANNELS.values()]
 
 @router.get("/channels/{channel_id}", response_model=ChannelDetailResponse)
-async def get_channel(channel_id: int):
+async def get_channel(channel_id: Union[int, str]):
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -114,11 +113,18 @@ async def get_channel(channel_id: int):
     )
 
 @router.get("/channels/{channel_id}/now-playing")
-async def get_channel_now_playing(channel_id: int):
+async def get_channel_now_playing(channel_id: Union[int, str]):
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
     ch = FM_CHANNELS[channel_id]
+    
+    # Restream channel
+    if channel_id == "restream":
+        restream_data = await get_restream_data()
+        if restream_data and restream_data.get("current"):
+            return [restream_data["current"]]
+        return []
     
     # Special logic for channel 1
     if channel_id == 1:
@@ -134,64 +140,43 @@ async def get_channel_now_playing(channel_id: int):
         return []
     
     # Jukebox mode for other channels
-    if ch.get("jukebox_mode"):
+    if channel_id == 2:
         jukebox_data = await get_jukebox_now()
         if jukebox_data:
             return [jukebox_data]
         return []
-    
-    # Default fallback logic for other channels
-    schedule_data = await get_schedule_now()
-    if schedule_data:
-        return schedule_data
-    
-    restream_data = await get_restream_data()
-    if restream_data and restream_data.get("is_active") and channel_id in restream_data.get("target_channels", []):
-        current = restream_data.get("current_item", {})
-        return [current] if current else []
-    
+
+    # Default
     return []
+    
 
 @router.get("/channels/{channel_id}/status", response_model=ChannelStatus)
-async def get_channel_status(channel_id: int):
+async def get_channel_status(channel_id: Union[int, str]):
+    """
+    Get channel operational status.
+    
+    Returns:
+        state: "online" if channel has current content, "offline" otherwise
+        is_playing: True if channel's now-playing endpoint returns non-empty data
+        
+    The status is determined by checking the channel's now-playing endpoint - 
+    if it returns any content, the channel is considered online and playing.
+    """
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
-    ch = FM_CHANNELS[channel_id]
+    # Get current now-playing data to determine status
+    now_playing = await get_channel_now_playing(channel_id)
+    is_playing = len(now_playing) > 0
     
-    if ch.get("jukebox_mode"):
-        jukebox_data = await get_jukebox_now()
-        is_playing = jukebox_data is not None
-        return ChannelStatus(
-            state="up" if is_playing else "down",
-            mode="jukebox",
-            is_playing=is_playing
-        )
-    
-    schedule_data = await get_schedule_now()
-    if schedule_data:
-        return ChannelStatus(
-            state="up",
-            mode="live",
-            is_playing=True
-        )
-    
-    restream_data = await get_restream_data()
-    if restream_data and restream_data.get("is_active") and channel_id in restream_data.get("target_channels", []):
-        return ChannelStatus(
-            state="up",
-            mode="restream",
-            is_playing=True
-        )
-    
+    # Simple online/offline based on whether we have current content
     return ChannelStatus(
-        state="down",
-        mode="offline",
-        is_playing=False
+        state="online" if is_playing else "offline",
+        is_playing=is_playing
     )
 
 @router.get("/channels/{channel_id}/streams", response_model=List[StreamItem])
-async def get_channel_streams(channel_id: int):
+async def get_channel_streams(channel_id: Union[int, str]):
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -199,7 +184,7 @@ async def get_channel_streams(channel_id: int):
     return [StreamItem(**stream) for stream in ch["streams"]]
 
 @router.get("/channels/{channel_id}/stream/default", response_model=StreamItem)
-async def get_channel_default_stream(channel_id: int):
+async def get_channel_default_stream(channel_id: Union[int, str]):
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -220,7 +205,7 @@ async def get_channel_default_stream(channel_id: int):
                404: {"description": "Channel not found"}
            },
            response_class=RedirectResponse)
-async def get_channel_default_stream_play(channel_id: int):
+async def get_channel_default_stream_play(channel_id: Union[int, str]):
     """
     Play the default stream for a channel (via HTTP redirect).
     
@@ -249,7 +234,7 @@ async def get_channel_default_stream_play(channel_id: int):
     raise HTTPException(status_code=404, detail="No streams available")
 
 @router.get("/channels/{channel_id}/stream/{quality}", response_model=StreamItem)
-async def get_channel_quality_stream(channel_id: int, quality: str):
+async def get_channel_quality_stream(channel_id: Union[int, str], quality: str):
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -266,7 +251,7 @@ async def get_channel_quality_stream(channel_id: int, quality: str):
                404: {"description": "Channel not found or quality not available"}
            },
            response_class=RedirectResponse)
-async def get_channel_quality_stream_play(channel_id: int, quality: str):
+async def get_channel_quality_stream_play(channel_id: Union[int, str], quality: str):
     """
     Play a specific quality stream for a channel (via HTTP redirect).
     
@@ -290,13 +275,6 @@ async def get_channel_quality_stream_play(channel_id: int, quality: str):
     
     raise HTTPException(status_code=404, detail=f"No {quality} quality stream available")
 
-@router.get("/restream/now-playing")
-async def get_restream_now_playing():
-    """Returns currently playing item from restream as a list (consistent with other now-playing endpoints)."""
-    restream_data = await get_restream_data()
-    if restream_data and restream_data.get("current"):
-        return [restream_data["current"]]
-    return []
 
 app.include_router(router, prefix=API_PREFIX)
 
