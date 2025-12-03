@@ -214,7 +214,12 @@ async def get_channel_default_stream(channel_id: int):
     
     raise HTTPException(status_code=404, detail="No streams available")
 
-@router.get("/channels/{channel_id}/stream/default/play")
+@router.get("/channels/{channel_id}/stream/default/play",
+           responses={
+               302: {"description": "Redirect to default stream URL"},
+               404: {"description": "Channel not found"}
+           },
+           response_class=RedirectResponse)
 async def get_channel_default_stream_play(channel_id: int):
     """
     Play the default stream for a channel (via HTTP redirect).
@@ -255,7 +260,12 @@ async def get_channel_quality_stream(channel_id: int, quality: str):
     
     raise HTTPException(status_code=404, detail=f"No {quality} quality stream available")
 
-@router.get("/channels/{channel_id}/stream/{quality}/play")
+@router.get("/channels/{channel_id}/stream/{quality}/play",
+           responses={
+               302: {"description": "Redirect to quality-specific stream URL"},
+               404: {"description": "Channel not found or quality not available"}
+           },
+           response_class=RedirectResponse)
 async def get_channel_quality_stream_play(channel_id: int, quality: str):
     """
     Play a specific quality stream for a channel (via HTTP redirect).
