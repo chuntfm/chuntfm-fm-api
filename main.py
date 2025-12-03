@@ -36,7 +36,7 @@ app = FastAPI(
 )
 router = APIRouter()
 class ChannelResponse(BaseModel):
-    id: int
+    id: int|str
     name: str
     description: str
 
