@@ -1,0 +1,7 @@
+fastapi>=0.122.0
+uvicorn[standard]>=0.38.0
+sqlalchemy>=2.0.44
+gunicorn>=23.0.0
+python-multipart>=0.0.6
+python-dateutil>=2.8.0
+httpx>=0.24.0

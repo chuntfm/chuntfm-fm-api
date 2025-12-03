@@ -1,0 +1,60 @@
+import os
+
+# Server Configuration  
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", "8000"))
+
+# Security
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production")
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "change-this-api-key")
+
+# Production Settings
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# API Configuration
+API_TITLE = os.getenv("API_TITLE", "ChuntFM Radio API")
+API_VERSION = os.getenv("API_VERSION", "0.1.0")
+API_PREFIX = os.getenv("API_PREFIX", "/fm")
+
+# FM Channel Configuration
+SCHEDULE_API_NOW_ENDPOINT = os.getenv("SCHEDULE_API_NOW_ENDPOINT", "http://localhost:8000/schedule/now")
+JUKEBOX_API_ENDPOINT = os.getenv("JUKEBOX_API_ENDPOINT", "http://localhost:9000/jukebox/now-playing")
+RESTREAM_ENDPOINT = os.getenv("RESTREAM_ENDPOINT", "http://localhost:8080/restream.json")
+
+# FM Channels - configurable channel definitions
+FM_CHANNELS = {
+        1: {
+            "id": 1,
+            "name": "ChuntFM Main",
+            "description": "Primary ChuntFM channel",
+            "streams": [
+                {
+                    "url": "https://localhost:8080/stream128",
+                    "format": "MP3",
+                    "bitrate": 128,
+                    "quality": "low"
+                },
+                {
+                    "url": "https://localhost:8080/stream",
+                    "format": "MP3",
+                    "bitrate": 320,
+                    "quality": "high"
+                }
+            ]
+        },
+        2: {
+            "id": 2,
+            "name": "ChuntFM Jukebox",
+            "description": "!juke",
+            "streams": [
+                {
+                    "url": "https://localhost:8080/stream2",
+                    "format": "MP3",
+                    "bitrate": 320,
+                    "quality": "high"
+                }
+            ],
+            "jukebox_mode": True
+        }
+    }
