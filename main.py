@@ -214,8 +214,21 @@ async def get_channel_default_stream(channel_id: int):
     
     raise HTTPException(status_code=404, detail="No streams available")
 
-@router.get("/channels/{channel_id}/stream/default/url")
-async def get_channel_default_stream_url(channel_id: int):
+@router.get("/channels/{channel_id}/stream/default/play")
+async def get_channel_default_stream_play(channel_id: int):
+    """
+    Play the default stream for a channel (via HTTP redirect).
+    
+    Args:
+        channel_id: FM channel ID (1, 2, etc.)
+    
+    Returns HTTP 302 redirect to the actual stream URL. This allows clients
+    to use stable API endpoints while the underlying stream URLs can change
+    in configuration without breaking existing integrations.
+    
+    Use this endpoint directly in media players, browser audio elements, etc.
+    Example: <audio src="/fm/channels/1/stream/default/play" controls>
+    """
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -242,8 +255,21 @@ async def get_channel_quality_stream(channel_id: int, quality: str):
     
     raise HTTPException(status_code=404, detail=f"No {quality} quality stream available")
 
-@router.get("/channels/{channel_id}/stream/{quality}/url")
-async def get_channel_quality_stream_url(channel_id: int, quality: str):
+@router.get("/channels/{channel_id}/stream/{quality}/play")
+async def get_channel_quality_stream_play(channel_id: int, quality: str):
+    """
+    Play a specific quality stream for a channel (via HTTP redirect).
+    
+    Args:
+        channel_id: FM channel ID (1, 2, etc.)
+        quality: Stream quality ("high", "low", "standard", etc.)
+    
+    Returns HTTP 302 redirect to the actual stream URL for the requested quality.
+    This provides stable API endpoints while allowing stream URLs to change.
+    
+    Use this endpoint directly in media players for quality selection.
+    Example: <audio src="/fm/channels/1/stream/high/play" controls>
+    """
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
