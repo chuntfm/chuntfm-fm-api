@@ -292,7 +292,10 @@ async def get_channel_quality_stream_play(channel_id: int, quality: str):
 
 @router.get("/restream/now-playing")
 async def get_restream_now_playing():
-    return await get_restream_data()
+    restream_data = await get_restream_data()
+    if restream_data and restream_data.get("current"):
+        return restream_data["current"]
+    return None
 
 app.include_router(router, prefix=API_PREFIX)
 
