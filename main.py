@@ -254,27 +254,9 @@ async def get_channel_quality_stream_url(channel_id: int, quality: str):
     
     raise HTTPException(status_code=404, detail=f"No {quality} quality stream available")
 
-@router.get("/restream/now-playing", response_model=Optional[RestreamInfo])
+@router.get("/restream/now-playing")
 async def get_restream_now_playing():
-    restream_data = await get_restream_data()
-    if not restream_data:
-        return None
-    
-    current_item = None
-    if restream_data.get("current_item"):
-        item_data = restream_data["current_item"]
-        current_item = NowPlayingItem(
-            title=item_data.get("title"),
-            artist=item_data.get("artist"),
-            source="restream"
-        )
-    
-    return RestreamInfo(
-        source_channel=restream_data.get("source_channel"),
-        target_channels=restream_data.get("target_channels", []),
-        current_item=current_item,
-        is_active=restream_data.get("is_active", False)
-    )
+    return await get_restream_data()
 
 app.include_router(router, prefix=API_PREFIX)
 
