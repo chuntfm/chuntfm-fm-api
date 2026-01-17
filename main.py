@@ -49,7 +49,7 @@ class StreamItem(BaseModel):
     default: Optional[bool] = None
 
 class ChannelDetailResponse(BaseModel):
-    id: int
+    id: int|str
     name: str
     description: str
     streams: List[StreamItem]
@@ -98,8 +98,15 @@ async def list_channels():
     return [ChannelResponse(id=ch["id"], name=ch["name"], description=ch["description"]) 
             for ch in FM_CHANNELS.values()]
 
+def normalize_channel_id(channel_id: Union[int, str]) -> Union[int, str]:
+    """Convert numeric string channel IDs to integers for FM_CHANNELS lookup."""
+    if isinstance(channel_id, str) and channel_id.isdigit():
+        return int(channel_id)
+    return channel_id
+
 @router.get("/channels/{channel_id}", response_model=ChannelDetailResponse)
 async def get_channel(channel_id: Union[int, str]):
+    channel_id = normalize_channel_id(channel_id)
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -114,6 +121,7 @@ async def get_channel(channel_id: Union[int, str]):
 
 @router.get("/channels/{channel_id}/now-playing")
 async def get_channel_now_playing(channel_id: Union[int, str]):
+    channel_id = normalize_channel_id(channel_id)
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -162,9 +170,10 @@ async def get_channel_status(channel_id: Union[int, str]):
     The status is determined by checking the channel's now-playing endpoint - 
     if it returns any content, the channel is considered online and playing.
     """
+    channel_id = normalize_channel_id(channel_id)
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
-    
+
     # Get current now-playing data to determine status
     now_playing = await get_channel_now_playing(channel_id)
     is_playing = len(now_playing) > 0
@@ -177,6 +186,7 @@ async def get_channel_status(channel_id: Union[int, str]):
 
 @router.get("/channels/{channel_id}/streams", response_model=List[StreamItem])
 async def get_channel_streams(channel_id: Union[int, str]):
+    channel_id = normalize_channel_id(channel_id)
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -185,6 +195,7 @@ async def get_channel_streams(channel_id: Union[int, str]):
 
 @router.get("/channels/{channel_id}/stream/default", response_model=StreamItem)
 async def get_channel_default_stream(channel_id: Union[int, str]):
+    channel_id = normalize_channel_id(channel_id)
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -219,6 +230,7 @@ async def get_channel_default_stream_play(channel_id: Union[int, str]):
     Use this endpoint directly in media players, browser audio elements, etc.
     Example: <audio src="/fm/channels/1/stream/default/play" controls>
     """
+    channel_id = normalize_channel_id(channel_id)
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -235,6 +247,7 @@ async def get_channel_default_stream_play(channel_id: Union[int, str]):
 
 @router.get("/channels/{channel_id}/stream/{quality}", response_model=StreamItem)
 async def get_channel_quality_stream(channel_id: Union[int, str], quality: str):
+    channel_id = normalize_channel_id(channel_id)
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
@@ -265,6 +278,7 @@ async def get_channel_quality_stream_play(channel_id: Union[int, str], quality: 
     Use this endpoint directly in media players for quality selection.
     Example: <audio src="/fm/channels/1/stream/high/play" controls>
     """
+    channel_id = normalize_channel_id(channel_id)
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
     
