@@ -24,8 +24,8 @@ except ImportError:
     ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "change-this-api-key")
     SCHEDULE_API_NOW_ENDPOINT = os.getenv("SCHEDULE_API_NOW_ENDPOINT", "http://localhost:8000/schedule/now")
     JUKEBOX_API_ENDPOINT = os.getenv("JUKEBOX_API_ENDPOINT", "http://localhost:9000/jukebox/now-playing")
-    RESTREAM_ENDPOINT = os.getenv("RESTREAM_ENDPOINT", "http://localhost:8080/restream.json")
-    
+    RESTREAM_NOW_ENDPOINT = os.getenv("RESTREAM_NOW_ENDPOINT", "https://api.chunt.org/schedule/restream/now")
+
 
 app = FastAPI(
     title=API_TITLE, 
@@ -90,8 +90,8 @@ async def get_schedule_now() -> List[Dict[str, Any]]:
 async def get_jukebox_now() -> Optional[Dict[str, Any]]:
     return await fetch_json(JUKEBOX_API_ENDPOINT)
 
-async def get_restream_data() -> Optional[Dict[str, Any]]:
-    return await fetch_json(RESTREAM_ENDPOINT)
+async def get_restream_now() -> Optional[Dict[str, Any]]:
+    return await fetch_json(RESTREAM_NOW_ENDPOINT)
 
 @router.get("/channels", response_model=List[ChannelResponse])
 async def list_channels():
@@ -129,22 +129,24 @@ async def get_channel_now_playing(channel_id: Union[int, str]):
     
     # Restream channel
     if channel_id == "restream":
-        restream_data = await get_restream_data()
-        if restream_data and restream_data.get("current"):
-            return [restream_data["current"]]
+        restream_data = await get_restream_now()
+        if restream_data:
+            return [restream_data]
         return []
     
     # Special logic for channel 1
     if channel_id == 1:
         schedule_data = await get_schedule_now()
-        if len(schedule_data)>0:
+        if schedule_data:
             return schedule_data
-        
-        # If schedule is empty, fall back to restream current item
-        restream_data = await get_restream_data()
-        if restream_data and restream_data.get("current"):
-            return [restream_data["current"]]
-        
+
+        restream_data = await get_restream_now()
+        if restream_data and restream_data.get("stop"):
+            stop_time = parser.parse(restream_data["stop"])
+            now = datetime.now(timezone.utc)
+            if (now - stop_time).total_seconds() <= 3:
+                return [{**restream_data, "restream": True}]
+
         return []
     
     # Jukebox mode for other channels
