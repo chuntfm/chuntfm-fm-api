@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, Query, Header, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from sqlalchemy import create_engine, Column, DateTime, String, Integer, text
 from sqlalchemy.orm import declarative_base
@@ -33,6 +34,12 @@ app = FastAPI(
     docs_url=f"{API_PREFIX}/docs" if API_PREFIX else "/docs",
     redoc_url=f"{API_PREFIX}/redoc" if API_PREFIX else "/redoc",
     openapi_url=f"{API_PREFIX}/openapi.json" if API_PREFIX else "/openapi.json"
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
 )
 router = APIRouter()
 class ChannelResponse(BaseModel):
