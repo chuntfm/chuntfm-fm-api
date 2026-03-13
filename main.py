@@ -22,7 +22,6 @@ except ImportError:
     API_TITLE = os.getenv("API_TITLE", "ChuntFM Schedule API")
     API_VERSION = os.getenv("API_VERSION", "0.1.0")
     API_PREFIX = os.getenv("API_PREFIX", "/fm")
-    ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "change-this-api-key")
     SCHEDULE_API_NOW_ENDPOINT = os.getenv("SCHEDULE_API_NOW_ENDPOINT", "http://localhost:8000/schedule/now")
     JUKEBOX_API_ENDPOINT = os.getenv("JUKEBOX_API_ENDPOINT", "http://localhost:9000/jukebox/now-playing")
     RESTREAM_NOW_ENDPOINT = os.getenv("RESTREAM_NOW_ENDPOINT", "https://api.chunt.org/schedule/restream/now")
