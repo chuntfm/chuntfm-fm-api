@@ -79,12 +79,22 @@ class RestreamInfo(BaseModel):
     current_item: Optional[NowPlayingItem] = None
     is_active: bool = False
 
+_cache: Dict[str, Any] = {}
+_cache_times: Dict[str, float] = {}
+CACHE_TTL_SECONDS = 30
+
 async def fetch_json(url: str) -> Optional[Dict[str, Any]]:
+    now = datetime.now(timezone.utc).timestamp()
+    if url in _cache and (now - _cache_times.get(url, 0)) < CACHE_TTL_SECONDS:
+        return _cache[url]
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(url, timeout=10.0)
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                _cache[url] = data
+                _cache_times[url] = now
+                return data
     except Exception:
         pass
     return None
