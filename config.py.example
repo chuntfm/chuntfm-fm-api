@@ -8,6 +8,7 @@ PORT = int(os.getenv("PORT", "8000"))
 WEBHOOK_KEYWORD = os.getenv("WEBHOOK_KEYWORD", "changeme")
 WEBHOOK_START_KEY = os.getenv("WEBHOOK_START_KEY", "start")
 WEBHOOK_STOP_KEY = os.getenv("WEBHOOK_STOP_KEY", "stop")
+LIVE_STATE_FILE = os.getenv("LIVE_STATE_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_state.json"))
 
 # Production Settings
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"

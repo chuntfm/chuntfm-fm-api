@@ -28,6 +28,7 @@ except ImportError:
     WEBHOOK_KEYWORD = os.getenv("WEBHOOK_KEYWORD", "changeme")
     WEBHOOK_START_KEY = os.getenv("WEBHOOK_START_KEY", "connection_start")
     WEBHOOK_STOP_KEY = os.getenv("WEBHOOK_STOP_KEY", "connection_stop")
+    LIVE_STATE_FILE = os.getenv("LIVE_STATE_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_state.json"))
 
 
 app = FastAPI(
@@ -82,7 +83,17 @@ class RestreamInfo(BaseModel):
     current_item: Optional[NowPlayingItem] = None
     is_active: bool = False
 
-_channel_live: Dict[Union[int, str], bool] = {}
+def _read_live_state() -> Dict[str, bool]:
+    try:
+        with open(LIVE_STATE_FILE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def _write_live_state(state: Dict[str, bool]):
+    with open(LIVE_STATE_FILE, "w") as f:
+        json.dump(state, f)
+
 
 _cache: Dict[str, Any] = {}
 _cache_times: Dict[str, float] = {}
@@ -164,7 +175,7 @@ async def get_channel_now_playing(channel_id: Union[int, str]):
         if schedule_data:
             return schedule_data
 
-        if _channel_live.get(channel_id, False):
+        if _read_live_state().get(str(channel_id), False):
             return [{"title": "unscheduled livestream w/ anon1111", "unscheduled": True, "start": None, "stop": None}]
 
         restream_data = await get_restream_now()
@@ -324,7 +335,7 @@ async def get_channel_live(channel_id: Union[int, str]):
     channel_id = normalize_channel_id(channel_id)
     if channel_id not in FM_CHANNELS:
         raise HTTPException(status_code=404, detail="Channel not found")
-    return {"live": _channel_live.get(channel_id, False)}
+    return {"live": _read_live_state().get(str(channel_id), False)}
 
 @router.post("/channels/{channel_id}/live")
 async def post_channel_live(channel_id: Union[int, str], body: Dict[str, Any]):
@@ -333,13 +344,15 @@ async def post_channel_live(channel_id: Union[int, str], body: Dict[str, Any]):
         raise HTTPException(status_code=404, detail="Channel not found")
     if body.get("keyword") != WEBHOOK_KEYWORD:
         raise HTTPException(status_code=403, detail="Invalid keyword")
+    state = _read_live_state()
     if body.get(WEBHOOK_START_KEY):
-        _channel_live[channel_id] = True
+        state[str(channel_id)] = True
     elif body.get(WEBHOOK_STOP_KEY):
-        _channel_live[channel_id] = False
+        state[str(channel_id)] = False
     else:
         raise HTTPException(status_code=400, detail="Invalid action")
-    return {"live": _channel_live[channel_id]}
+    _write_live_state(state)
+    return {"live": state[str(channel_id)]}
 
 app.include_router(router, prefix=API_PREFIX)
 
