@@ -25,6 +25,9 @@ except ImportError:
     SCHEDULE_API_NOW_ENDPOINT = os.getenv("SCHEDULE_API_NOW_ENDPOINT", "http://localhost:8000/schedule/now")
     JUKEBOX_API_ENDPOINT = os.getenv("JUKEBOX_API_ENDPOINT", "http://localhost:9000/jukebox/now-playing")
     RESTREAM_NOW_ENDPOINT = os.getenv("RESTREAM_NOW_ENDPOINT", "https://api.chunt.org/schedule/restream/now")
+    WEBHOOK_KEYWORD = os.getenv("WEBHOOK_KEYWORD", "changeme")
+    WEBHOOK_START_KEY = os.getenv("WEBHOOK_START_KEY", "connection_start")
+    WEBHOOK_STOP_KEY = os.getenv("WEBHOOK_STOP_KEY", "connection_stop")
 
 
 app = FastAPI(
@@ -78,6 +81,8 @@ class RestreamInfo(BaseModel):
     target_channels: List[int] = []
     current_item: Optional[NowPlayingItem] = None
     is_active: bool = False
+
+_channel_live: Dict[Union[int, str], bool] = {}
 
 _cache: Dict[str, Any] = {}
 _cache_times: Dict[str, float] = {}
@@ -158,6 +163,9 @@ async def get_channel_now_playing(channel_id: Union[int, str]):
         schedule_data = await get_schedule_now()
         if schedule_data:
             return schedule_data
+
+        if _channel_live.get(channel_id, False):
+            return [{"title": "unscheduled livestream w/ anon1111", "unscheduled": True, "start": None, "stop": None}]
 
         restream_data = await get_restream_now()
         if restream_data and restream_data.get("stop"):
@@ -310,6 +318,28 @@ async def get_channel_quality_stream_play(channel_id: Union[int, str], quality: 
     
     raise HTTPException(status_code=404, detail=f"No {quality} quality stream available")
 
+
+@router.get("/channels/{channel_id}/live")
+async def get_channel_live(channel_id: Union[int, str]):
+    channel_id = normalize_channel_id(channel_id)
+    if channel_id not in FM_CHANNELS:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    return {"live": _channel_live.get(channel_id, False)}
+
+@router.post("/channels/{channel_id}/live")
+async def post_channel_live(channel_id: Union[int, str], body: Dict[str, Any]):
+    channel_id = normalize_channel_id(channel_id)
+    if channel_id not in FM_CHANNELS:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    if body.get("keyword") != WEBHOOK_KEYWORD:
+        raise HTTPException(status_code=403, detail="Invalid keyword")
+    if body.get(WEBHOOK_START_KEY):
+        _channel_live[channel_id] = True
+    elif body.get(WEBHOOK_STOP_KEY):
+        _channel_live[channel_id] = False
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+    return {"live": _channel_live[channel_id]}
 
 app.include_router(router, prefix=API_PREFIX)
 
