@@ -171,11 +171,23 @@ async def get_channel_now_playing(channel_id: Union[int, str]):
     
     # Special logic for channel 1
     if channel_id == 1:
+        is_live = _read_live_state().get(str(channel_id), False)
         schedule_data = await get_schedule_now()
-        if schedule_data:
+
+        if schedule_data and is_live:
             return schedule_data
 
-        if _read_live_state().get(str(channel_id), False):
+        if schedule_data and not is_live:
+            result = [{**item, "not_live": True} for item in schedule_data]
+            restream_data = await get_restream_now()
+            if restream_data and restream_data.get("stop"):
+                stop_time = parser.parse(restream_data["stop"])
+                now = datetime.now(timezone.utc)
+                if (now - stop_time).total_seconds() <= 10:
+                    result.append({**restream_data, "restream": True})
+            return result
+
+        if is_live:
             return [{"title": "unscheduled livestream w/ anon1111", "unscheduled": True, "start": None, "stop": None}]
 
         restream_data = await get_restream_now()
