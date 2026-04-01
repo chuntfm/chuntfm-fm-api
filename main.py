@@ -165,7 +165,7 @@ async def get_channel_now_playing(channel_id: Union[int, str]):
         if restream_data and restream_data.get("stop"):
             stop_time = parser.parse(restream_data["stop"])
             now = datetime.now(timezone.utc)
-            if (now - stop_time).total_seconds() <= 10:
+            if (now - stop_time).total_seconds() <= 60:
                 return [restream_data]
         return []
     
@@ -183,7 +183,7 @@ async def get_channel_now_playing(channel_id: Union[int, str]):
             if restream_data and restream_data.get("stop"):
                 stop_time = parser.parse(restream_data["stop"])
                 now = datetime.now(timezone.utc)
-                if (now - stop_time).total_seconds() <= 10:
+                if (now - stop_time).total_seconds() <= 60:
                     result.append({**restream_data, "restream": True})
             return result
 
@@ -194,7 +194,7 @@ async def get_channel_now_playing(channel_id: Union[int, str]):
         if restream_data and restream_data.get("stop"):
             stop_time = parser.parse(restream_data["stop"])
             now = datetime.now(timezone.utc)
-            if (now - stop_time).total_seconds() <= 10:
+            if (now - stop_time).total_seconds() <= 60:
                 return [{**restream_data, "restream": True}]
 
         return []
